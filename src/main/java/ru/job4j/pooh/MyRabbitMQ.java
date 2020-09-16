@@ -29,16 +29,17 @@ public class MyRabbitMQ {
         try (var server = new ServerSocket(PORT)) {
             while (isRunnable) {
                 try (
-                        Socket socket = server.accept();
-                        var reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                        var writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+                        ClientSocket socket = new ClientSocket(server);
                 ) {
-                    String request = reader.readLine();
+                    String request = socket.readLine();
+                    if (request == null) {
+                        continue;
+                    }
                     Map<String, String> map = parseRequest(request);
                     Objects.requireNonNull(map);
 
                     if (map.get("kind").equals("POST")) {
-                        String json = getJson(reader);
+                        String json = getJson(socket.lines());
                         if (map.get("queue").equals("queue")) {
                             executor.submit(getTaskForPost(json, queue, "queue"));
                         } else {
@@ -54,9 +55,7 @@ public class MyRabbitMQ {
                         }
                         String answer = future.get();
                         if (answer != null) {
-                            writer.write(answer);
-                            writer.newLine();
-                            writer.flush();
+                            socket.writeLine(answer);
                         }
                     }
                 } catch (InterruptedException | ExecutionException e) {
@@ -71,6 +70,7 @@ public class MyRabbitMQ {
     private Callable<String> getTaskForGet(String request, ConcurrentHashMap<String, String> map) {
         return () -> {
             String header = getHeader(request);
+            Objects.requireNonNull(header);
             String answer = map.get(header);
             map.remove(header);
             return answer;
@@ -102,8 +102,7 @@ public class MyRabbitMQ {
         };
     }
 
-    private String getJson(BufferedReader reader) {
-        Stream<String> body = reader.lines();
+    private String getJson(Stream<String> body) {
         var builder = new StringBuilder();
         body.forEach(builder::append);
         return builder.toString();

@@ -1,9 +1,6 @@
 package ru.job4j.pooh;
 
-import java.io.*;
-import java.net.Socket;
-import java.util.ArrayList;
-import java.util.List;
+import java.io.IOException;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -25,20 +22,16 @@ public class Subscriber {
     }
 
     public void task(String query) {
+        String line;
         while (isRunnable) {
-            try (Socket socket = new Socket("127.0.0.1", PORT);
-                 var writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-                 var reader = new BufferedReader(new InputStreamReader(socket.getInputStream()))
-            ) {
-                writer.write(query);
-                writer.newLine();
-                writer.flush();
+            try (var socket = new ClientSocket("127.0.0.1", PORT)) {
+                socket.writeLine(query);
                 Thread.sleep(100);
-                if (reader.ready()) {
-                    list.add(reader.readLine());
+                if ((line = socket.readLine()) != null) {
+                    list.add(line);
                 }
                 Thread.sleep(5000);
-            } catch (InterruptedException | IOException e) {
+            } catch (IOException | InterruptedException e) {
                 e.printStackTrace();
             }
         }

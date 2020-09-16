@@ -1,9 +1,6 @@
 package ru.job4j.pooh;
 
-import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.net.Socket;
 
 public class Publisher {
     private final int PORT = 5672;
@@ -15,12 +12,8 @@ public class Publisher {
     }
 
     public void exec(String request) {
-        try (Socket socket = new Socket("127.0.0.1", PORT);
-             var writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-        ) {
-            writer.write(request);
-            writer.newLine();
-            writer.flush();
+        try (var socket = new ClientSocket("127.0.0.1", PORT)) {
+            socket.writeLine(request);
         } catch (IOException e) {
             e.printStackTrace();
         }
